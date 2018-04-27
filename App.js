@@ -5,30 +5,29 @@
  */
 
 import React, { Component } from 'react';
-import {
-  Platform,
-  StyleSheet,
-  Text,
-  View,
-  AsyncStorage,
-  Button,
-  Alert,
-} from 'react-native';
+import { AppState, Platform, StyleSheet, Text, View, AsyncStorage, Button, Alert } from 'react-native';
+import PushNotification from 'react-native-push-notification';
+import PushController from './PushController.js'; //The push controller
 
 export default class App extends Component {
   constructor(props) {
     super(props);
     this.ButtonClick = this.ButtonClick.bind(this);
+    this.handleAppStateChange = this.handleAppStateChange.bind(this);
+    this.sendNotification = this.sendNotification.bind(this);
     this.state = {
       isLoading: true,
+      appState: AppState.currentState,
     }
     this.loadData();
   }
 
   componentDidMount() {
+    AppState.addEventListener('change', this.handleAppStateChange);
   }
 
   componentWillMount() {
+    AppState.removeEventListener('change', this.handleAppStateChange);
   }
 
   componentWillUnmount() {
@@ -42,6 +41,32 @@ export default class App extends Component {
      })
     }
   }
+
+  handleAppStateChange(nextAppState) {
+    if (this.state.appState.match(/active/) && (nextAppState === 'inactive' || nextAppState === 'background')) {
+      console.log("Background");
+      PushNotification.localNotificationSchedule({
+        message: 'Scheduled delay notification message', // (required)
+        date: new Date(Date.now() + (3 * 1000)) // in 3 secs
+      });
+    }
+    else if(this.state.appState.match(/inactive|background/) && nextAppState === 'active') {
+      console.log("foreground");
+      let logOutTime = this.state.logOutTime
+      if(logOutTime != null && logOutTime != undefined) {
+        this.setState({
+          timeLeft: logOutTime - new Date().getTime(),
+        });
+      }
+    }
+    this.setState({appState: nextAppState});
+  }
+
+  sendNotification() {
+    PushNotification.localNotification({
+      message: 'You pushed the notification button!'
+    });
+  };
 
   async loadData() {
     var showButton = true;
@@ -99,7 +124,10 @@ export default class App extends Component {
     const element = getComponents(currState, this.ButtonClick, this.state.timeLeft);
     return (
       <View style={styles.container}>
-      {element}
+        {element}
+        <Button title='Press here for a notification'
+          onPress={this.sendNotification} />
+        <PushController />
       </View>
     );
   }
