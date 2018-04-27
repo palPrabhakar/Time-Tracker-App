@@ -16,7 +16,6 @@ export default class App extends Component {
     super(props);
     this.ButtonClick = this.ButtonClick.bind(this);
     this.handleAppStateChange = this.handleAppStateChange.bind(this);
-    this.sendNotification = this.sendNotification.bind(this);
     this.state = {
       isLoading: true,
       appState: AppState.currentState,
@@ -43,10 +42,10 @@ export default class App extends Component {
      })
 
      if(this.state.timeLeft < 0) {
-       this.sendNotification()
-       this.setState({
-         invalidateTimer: true,
-       })
+      clearInterval(this.timerId);
+      this.setState({
+        invalidateTimer: true,
+       });
     }
   }
   }
@@ -67,14 +66,6 @@ export default class App extends Component {
     this.setState({appState: nextAppState});
   }
 
-  sendNotification() {
-    // Alert.alert(this.timerId.toString());
-    clearInterval(this.timerId);
-    PushNotification.localNotification({
-      message: 'It\'s time to go Home'
-    });
-  };
-
   async loadData() {
     var showButton = true;
     var logDate = null;
@@ -88,18 +79,22 @@ export default class App extends Component {
       if (logDate !== null && logDate != undefined && logOutTime !== null && logOutTime != undefined && logDate === currentDate.toString()) {
           showButton = false;
           this.timerId = setInterval(() => this.tick(), 1000);
+          this.setState({
+            isLoading: false,
+            showButton: showButton,
+            logDate: logDate,
+            logOutTime: parseInt(logOutTime),
+            timeLeft: parseInt(logOutTime) - new Date().getTime(),
+          });
       }
     } catch (error) {
-      console.log(error)
+      console.log(error);
+      this.setState({
+        isLoading: false,
+        showButton: showButton,
+      });
     }
     console.log(showButton == true ? "true" : "false")
-    this.setState({
-      isLoading: false,
-      showButton: showButton,
-      logDate: logDate,
-      logOutTime: parseInt(logOutTime),
-      timeLeft: parseInt(logOutTime) - new Date().getTime(),
-    })
   } 
 
   ButtonClick() {
@@ -111,19 +106,26 @@ export default class App extends Component {
       try {
         await AsyncStorage.setItem('logDate', logDate.toString());
         await AsyncStorage.setItem('logOutTime', logOutTime.toString());
+        this.setState({
+          showButton: false,
+          invalidateTimer: false,
+          logOutTime: parseInt(logOutTime),
+          timeLeft: parseInt(logOutTime) - new Date().getTime(),
+        })
+        this.timerId = setInterval(() => this.tick(), 1000);
+        PushNotification.localNotificationSchedule({
+          message: 'It\'s time to go Home!!', // (required)
+          date: currentDate // in 9 hours
+        });
+
       }
       catch (error) {
         console.log(error);
+        Alert.alert("Something went wrong, try again!!");
       }
     })();
     
-    this.setState({
-      showButton: false,
-      invalidateTimer: false,
-      logOutTime: parseInt(logOutTime),
-      timeLeft: parseInt(logOutTime) - new Date().getTime(),
-    })
-    this.timerId = setInterval(() => this.tick(), 1000);
+
   }
 
   render() {
