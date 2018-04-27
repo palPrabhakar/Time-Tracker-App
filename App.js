@@ -75,20 +75,19 @@ export default class App extends Component {
       logDate =  await AsyncStorage.getItem('logDate');
       logOutTime = await AsyncStorage.getItem('logOutTime');   
       let currentDate = new Date().getDate();
-
       if (logDate !== null && logDate != undefined && logOutTime !== null && logOutTime != undefined && logDate === currentDate.toString()) {
           showButton = false;
           this.timerId = setInterval(() => this.tick(), 1000);
-          this.setState({
-            isLoading: false,
-            showButton: showButton,
-            logDate: logDate,
-            logOutTime: parseInt(logOutTime),
-            timeLeft: parseInt(logOutTime) - new Date().getTime(),
-          });
       }
+      this.setState({
+        isLoading: false,
+        showButton: showButton,
+        logDate: logDate,
+        logOutTime: parseInt(logOutTime),
+        timeLeft: parseInt(logOutTime) - new Date().getTime(),
+      });
     } catch (error) {
-      console.log(error);
+      console.log(error);   
       this.setState({
         isLoading: false,
         showButton: showButton,
@@ -106,12 +105,14 @@ export default class App extends Component {
       try {
         await AsyncStorage.setItem('logDate', logDate.toString());
         await AsyncStorage.setItem('logOutTime', logOutTime.toString());
+        
         this.setState({
           showButton: false,
           invalidateTimer: false,
           logOutTime: parseInt(logOutTime),
           timeLeft: parseInt(logOutTime) - new Date().getTime(),
         })
+
         this.timerId = setInterval(() => this.tick(), 1000);
         PushNotification.localNotificationSchedule({
           message: 'It\'s time to go Home!!', // (required)
