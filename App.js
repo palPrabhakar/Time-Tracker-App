@@ -5,9 +5,11 @@
  */
 
 import React, { Component } from 'react';
-import { AppState, Platform, StyleSheet, Text, View, AsyncStorage, Button, Alert } from 'react-native';
+import { AppState, Platform, StyleSheet, Text, View, AsyncStorage, Button, Alert, Image, Dimensions } from 'react-native';
 import PushNotification from 'react-native-push-notification';
 import PushController from './PushController.js'; //The push controller
+
+const win = Dimensions.get('window');
 
 export default class App extends Component {
   constructor(props) {
@@ -31,7 +33,7 @@ export default class App extends Component {
   }
 
   componentWillUnmount() {
-    clearInterval(this.timerID);
+    clearInterval(this.timerId);
   }
 
   tick() {
@@ -39,16 +41,19 @@ export default class App extends Component {
       this.setState({
         timeLeft: this.state.timeLeft - 1000,
      })
+
+     if(this.state.timeLeft < 0) {
+       this.sendNotification()
+       this.setState({
+         invalidateTimer: true,
+       })
     }
+  }
   }
 
   handleAppStateChange(nextAppState) {
     if (this.state.appState.match(/active/) && (nextAppState === 'inactive' || nextAppState === 'background')) {
       console.log("Background");
-      PushNotification.localNotificationSchedule({
-        message: 'Scheduled delay notification message', // (required)
-        date: new Date(Date.now() + (3 * 1000)) // in 3 secs
-      });
     }
     else if(this.state.appState.match(/inactive|background/) && nextAppState === 'active') {
       console.log("foreground");
@@ -63,8 +68,10 @@ export default class App extends Component {
   }
 
   sendNotification() {
+    // Alert.alert(this.timerId.toString());
+    clearInterval(this.timerId);
     PushNotification.localNotification({
-      message: 'You pushed the notification button!'
+      message: 'It\'s time to go Home'
     });
   };
 
@@ -98,7 +105,7 @@ export default class App extends Component {
   ButtonClick() {
     let currentDate = new Date();
     let logDate = currentDate.getDate();
-    let logOutTime = currentDate.setHours(currentDate.getHours() + 1);
+    let logOutTime = currentDate.setHours(currentDate.getHours() + 9);
 
     (async () => {
       try {
@@ -112,21 +119,20 @@ export default class App extends Component {
     
     this.setState({
       showButton: false,
+      invalidateTimer: false,
       logOutTime: parseInt(logOutTime),
       timeLeft: parseInt(logOutTime) - new Date().getTime(),
     })
-
     this.timerId = setInterval(() => this.tick(), 1000);
   }
 
   render() {
-    const currState = this.state.isLoading ? "loading" : this.state.showButton ? "showButton" : "timer";
+    let currState = this.state.isLoading ? "loading" : this.state.showButton ? "showButton" : "timer";
+    currState = this.state.invalidateTimer ? "timerExpired" : currState;
     const element = getComponents(currState, this.ButtonClick, this.state.timeLeft);
     return (
       <View style={styles.container}>
         {element}
-        <Button title='Press here for a notification'
-          onPress={this.sendNotification} />
         <PushController />
       </View>
     );
@@ -134,6 +140,10 @@ export default class App extends Component {
 }
 
 function getComponents(state) {
+  let pic = {
+      uri: 'http://cdn.home-designing.com/wp-content/uploads/2013/06/Sustainable-treehouse-exterior-2.jpg'
+  };
+
   switch(state) {
     case "loading":
     return (
@@ -143,7 +153,14 @@ function getComponents(state) {
     );
     case "showButton":
     return (
-      <Button onPress={arguments[1]} title="Start Logging" />
+      <Button onPress={arguments[1]} title="Start Timer" />
+    );
+    case "timerExpired":
+    return(
+      <View>
+        <Image source={pic} style={styles.image} resizeMode={'contain'}/>
+        <Button onPress={arguments[1]} title="Start Timer" />
+      </View>
     );
     default:
       let h = Math.floor((arguments[2]/(3600*1000)));
@@ -173,5 +190,11 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     color: '#333333',
     marginBottom: 5,
+  },
+  image: {
+    flex: 1,
+    alignSelf: 'stretch',
+    width: win.width,
+    height: win.height,
   },
 });
